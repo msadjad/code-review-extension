@@ -1,0 +1,172 @@
+{
+  "name": "review-guide",
+  "displayName": "Review Guide",
+  "description": "Guided code review: walks a PR in small chunks explained in business terms, with diagrams and multi-agent findings.",
+  "version": "0.6.4",
+  "publisher": "msadjad",
+  "private": true,
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/msadjad/code-review-extension.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": ["onStartupFinished"],
+  "contributes": {
+    "commands": [
+      { "command": "reviewGuide.start", "title": "Start Review", "category": "Review Guide", "icon": "$(play)" },
+      { "command": "reviewGuide.regenerate", "title": "Regenerate Tour", "category": "Review Guide", "icon": "$(refresh)" },
+      { "command": "reviewGuide.runReviewers", "title": "Run Agent Reviewers", "category": "Review Guide", "icon": "$(search)" },
+      { "command": "reviewGuide.next", "title": "Next Step", "category": "Review Guide" },
+      { "command": "reviewGuide.prev", "title": "Previous Step", "category": "Review Guide" },
+      { "command": "reviewGuide.overview", "title": "Show Overview", "category": "Review Guide" },
+      { "command": "reviewGuide.finish", "title": "Show Finish Screen", "category": "Review Guide" },
+      { "command": "reviewGuide.backToStep", "title": "Back to Current Step", "category": "Review Guide" },
+      { "command": "reviewGuide.markUnderstood", "title": "Mark Step Understood", "category": "Review Guide" },
+      { "command": "reviewGuide.markConcern", "title": "Mark Step as Concern", "category": "Review Guide" },
+      { "command": "reviewGuide.addNote", "title": "Add Note at Cursor", "category": "Review Guide" },
+      { "command": "reviewGuide.toggleDiff", "title": "Toggle Diff View", "category": "Review Guide" },
+      { "command": "reviewGuide.toggleIsolate", "title": "Toggle Isolate Chunk", "category": "Review Guide" },
+      { "command": "reviewGuide.explainSelection", "title": "Explain Selection", "category": "Review Guide" },
+      { "command": "reviewGuide.focusPanel", "title": "Focus Panel", "category": "Review Guide" },
+      { "command": "reviewGuide.showShortcuts", "title": "Show Keyboard Shortcuts", "category": "Review Guide" },
+      { "command": "reviewGuide.threadAsk", "title": "Ask", "category": "Review Guide" },
+      { "command": "reviewGuide.threadComment", "title": "Add Review Comment", "category": "Review Guide", "icon": "$(comment)" },
+      { "command": "reviewGuide.submitReview", "title": "Submit Review to GitHub", "category": "Review Guide" },
+      { "command": "reviewGuide.stop", "title": "End Review", "category": "Review Guide", "icon": "$(close)" }
+    ],
+    "keybindings": [
+      { "command": "reviewGuide.next", "key": "alt+j", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.prev", "key": "alt+k", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.markUnderstood", "key": "alt+u", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.markConcern", "key": "alt+x", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.addNote", "key": "alt+c", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.toggleDiff", "key": "alt+d", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.toggleIsolate", "key": "alt+i", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.overview", "key": "alt+o", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.backToStep", "key": "alt+b", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.explainSelection", "key": "alt+e", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.focusPanel", "key": "ctrl+alt+g", "when": "reviewGuide.active" },
+      { "command": "reviewGuide.showShortcuts", "key": "shift+/", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.toggleDiff", "key": "\\ d", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.toggleIsolate", "key": "\\ i", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.markUnderstood", "key": "\\ u", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.markConcern", "key": "\\ x", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.addNote", "key": "\\ c", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.explainSelection", "key": "\\ e", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode =~ /^(Normal|Visual|VisualLine|VisualBlock)$/ && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.overview", "key": "\\ o", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.backToStep", "key": "\\ b", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.focusPanel", "key": "\\ g", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.finish", "key": "\\ f", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.next", "key": "n", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" },
+      { "command": "reviewGuide.prev", "key": "p", "when": "reviewGuide.active && config.reviewGuide.stepKeysInEditor && editorTextFocus && vim.mode == 'Normal' && resourceScheme =~ /^(file|review-base)$/" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        { "id": "reviewGuide", "title": "Review Guide", "icon": "media/icon.svg" }
+      ]
+    },
+    "views": {
+      "reviewGuide": [
+        { "id": "reviewGuide.files", "name": "Changed Files", "when": "reviewGuide.active" },
+        { "id": "reviewGuide.steps", "name": "Tour" }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "reviewGuide.steps",
+        "contents": "Walk a pull request in small, explained chunks.\n[Start Guided Review](command:reviewGuide.start)",
+        "when": "!reviewGuide.active"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "reviewGuide.threadAsk", "when": "false" },
+        { "command": "reviewGuide.threadComment", "when": "false" }
+      ],
+      "comments/commentThread/context": [
+        { "command": "reviewGuide.threadAsk", "group": "inline@1", "when": "commentController == reviewGuide.notes && commentThread == answer" },
+        { "command": "reviewGuide.threadComment", "group": "inline@2", "when": "commentController == reviewGuide.notes && commentThread == answer" }
+      ],
+      "comments/commentThread/title": [
+        { "command": "reviewGuide.threadComment", "group": "navigation", "when": "commentController == reviewGuide.notes && commentThread == answer" }
+      ],
+      "view/title": [
+        { "command": "reviewGuide.start", "when": "view == reviewGuide.steps", "group": "navigation@1" },
+        { "command": "reviewGuide.runReviewers", "when": "view == reviewGuide.steps && reviewGuide.active", "group": "navigation@2" },
+        { "command": "reviewGuide.regenerate", "when": "view == reviewGuide.steps && reviewGuide.active", "group": "navigation@3" },
+        { "command": "reviewGuide.stop", "when": "view == reviewGuide.steps && reviewGuide.active", "group": "navigation@4" }
+      ]
+    },
+    "configuration": {
+      "title": "Review Guide",
+      "properties": {
+        "reviewGuide.tourAgent": {
+          "type": "string",
+          "enum": ["claude", "codex"],
+          "default": "claude",
+          "description": "Agent that writes the guided tour (explanations and diagrams)."
+        },
+        "reviewGuide.reviewers": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["claude", "codex"] },
+          "default": ["claude", "codex"],
+          "description": "Agents that independently review the change in parallel. Their findings are shown per chunk, and agreement between agents is highlighted."
+        },
+        "reviewGuide.claudePath": { "type": "string", "default": "claude", "description": "Path to the Claude Code CLI." },
+        "reviewGuide.codexPath": { "type": "string", "default": "codex", "description": "Path to the Codex CLI." },
+        "reviewGuide.claudeModel": { "type": "string", "default": "", "description": "Model for Claude runs. Empty uses the CLI default." },
+        "reviewGuide.codexModel": { "type": "string", "default": "", "description": "Model for Codex runs. Empty uses the CLI default." },
+        "reviewGuide.singlePassMaxChars": {
+          "type": "number",
+          "default": 120000,
+          "description": "Diffs larger than this many characters are toured in two passes (outline, then one pass per section)."
+        },
+        "reviewGuide.layout": {
+          "type": "string",
+          "enum": ["tab", "split"],
+          "default": "tab",
+          "description": "Where the guide opens. tab: as a tab among your code tabs, so the editor is never split. split: in its own group beside the code."
+        },
+        "reviewGuide.stepKeysInEditor": {
+          "type": "boolean",
+          "default": true,
+          "description": "While a review is active and Vim is in normal mode, n and p in a code editor go to the next and previous step instead of Vim's search-next and paste, ? lists the shortcuts instead of searching backwards, and backslash followed by a letter runs the other actions (\\d diff, \\i isolate, \\u understood, \\x concern, \\c note, \\e explain, \\o overview, \\b back to step, \\g guide, \\f finish). The alt shortcuts always work."
+        },
+        "reviewGuide.askLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "While a review is active, show an \"Ask Review Guide about this\" link above selected code."
+        },
+        "reviewGuide.syncViewedToGitHub": {
+          "type": "boolean",
+          "default": true,
+          "description": "When reviewing a pull request, tick \"Viewed\" on GitHub for each file once all of its chunks are read, and untick it if the file is marked unread again."
+        },
+        "reviewGuide.timeoutMinutes": { "type": "number", "default": 20, "description": "Maximum time for a single agent run." }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "package": "npm run build && vsce package --no-dependencies --allow-missing-repository -o review-guide.vsix"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "~1.90.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.0",
+    "mermaid": "^11.4.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
