@@ -38,6 +38,8 @@ Preparing a tour takes a few minutes. Tours, progress, notes and findings are ca
 
 A review that is open stays open while you start another: if the new one is cancelled, fails, or opens in another worktree's window, the first carries on where it was, so two PRs in two worktrees can be reviewed side by side, one window each.
 
+Progress is saved per PR commit, so you can move between several PRs: starting a review you worked on before brings back what you read, your marks, questions and review comments. **Regenerate Tour** keeps them too, moving them onto the new steps. Conversations and review comments are shown again in the code whenever you return to their file, each review comment with a trash button to delete it.
+
 Reloading or reopening the window brings the review back at the step you were on, as long as the checkout is still on the same commit. **Review Guide: End Review** ends it for good.
 
 ## Keys

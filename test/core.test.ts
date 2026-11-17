@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { allHunks, hunkRange, isLineInDiff, parseDiff, renderDiffForPrompt } from "../src/diff";
 import { addUnexplainedSteps, buildTour, normalizeOutline, normalizeRisks, stripFence, uncoveredHunks } from "../src/tour";
-import { buildReviewPayload, conversationTurns } from "../src/notes";
+import { buildReviewPayload, carryProgress, conversationTurns, emptyState } from "../src/notes";
 import { findingsForRange, markAgreement, normalizeFindings, sortFindings } from "../src/reviewers";
 import { parseLooseJson } from "../src/agents";
 import { md } from "../webview/markdown";
@@ -298,5 +298,30 @@ describe("conversation turns", () => {
     expect(turns.map((t) => t.who)).toEqual(["you", "guide", "you", "guide", "you", "comment"]);
     expect(turns[0].text).toBe("Explain this code");
     expect(turns[5].text).toBe("Please tighten this.");
+  });
+});
+
+describe("carrying progress to a regenerated tour", () => {
+  const step = (id: string, file: string, startLine: number, endLine: number, hunkIds: string[]) => ({ id, file, startLine, endLine, hunkIds });
+  const old = [step("s1", "a.ts", 1, 10, ["h1"]), step("s2", "a.ts", 20, 30, ["h2"]), step("s3", "b.ts", 1, 5, ["h3"])];
+  const next = [step("s1", "b.ts", 1, 5, ["h3"]), step("s2", "a.ts", 1, 30, ["h1", "h2"]), step("s3", "c.ts", 1, 5, ["h4"])];
+
+  it("marks a new step read only when all of its hunks were read", () => {
+    const state = { ...emptyState(), visited: ["s1", "s3"], statuses: { s3: "understood" as const } };
+    const out = carryProgress(old, state, next);
+    expect(out.visited).toEqual(["s1"]);
+    expect(out.statuses).toEqual({ s1: "understood" });
+    expect(carryProgress(old, { ...state, visited: ["s1", "s2", "s3"] }, next).visited).toEqual(["s1", "s2"]);
+  });
+
+  it("keeps notes and questions, attached to the step that now holds their line", () => {
+    const state = {
+      ...emptyState(),
+      notes: [{ id: "n1", stepId: "s2", file: "a.ts", line: 25, body: "x" }],
+      asked: [{ id: "a1", stepId: "s3", file: "b.ts", startLine: 2, endLine: 3, question: "q", answer: "a", pending: false }],
+    };
+    const out = carryProgress(old, state, next);
+    expect(out.notes[0].stepId).toBe("s2");
+    expect(out.asked[0].stepId).toBe("s1");
   });
 });

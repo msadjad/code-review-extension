@@ -42,6 +42,7 @@ export function activate(context: vscode.ExtensionContext): { controller: Contro
   reg("reviewGuide.toggleIsolate", () => controller.toggleIsolate());
   reg("reviewGuide.explainSelection", () => controller.explainSelection());
   reg("reviewGuide.threadAsk", (arg) => controller.threadAsk(arg));
+  reg("reviewGuide.threadDeleteNote", (thread) => controller.threadDeleteNote(thread));
   reg("reviewGuide.threadComment", (arg) => controller.threadComment(arg));
   reg("reviewGuide.showShortcuts", () => controller.showShortcuts());
   reg("reviewGuide.focusPanel", () => controller.focusPanel());

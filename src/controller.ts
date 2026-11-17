@@ -6,7 +6,7 @@ import { DiffFile, allHunks, diffStats, isLineInDiff, parseDiff } from "./diff";
 import { AnswerThread, ChunkTarget, EditorFocus } from "./editorFocus";
 import { ChangeContext, draftRiskComments, generateTour, repairDiagram, writeEli5 } from "./generator";
 import * as git from "./git";
-import { Asked, FindingsFile, Note, ReviewEvent, ReviewState, buildReviewPayload, conversationTurns, emptyState } from "./notes";
+import { Asked, FindingsFile, Note, ReviewEvent, ReviewState, buildReviewPayload, carryProgress, conversationTurns, emptyState } from "./notes";
 import { Panel, PanelMessage } from "./panel";
 import { Finding, ReviewerState, markAgreement, runReviewer, sortFindings } from "./reviewers";
 import { StepsTree } from "./stepsTree";
@@ -38,6 +38,8 @@ interface Session {
   writingEli5: boolean;
   draftingRisks: boolean;
   /** Keeps GitHub's "Viewed" boxes in step with the files fully read here. */
+  /** The tour being replaced by a regeneration, so progress can be carried over to the new one. */
+  replacing?: Tour;
   viewed: { previouslyDone: Set<string>; onGitHub?: Set<string>; queue: Promise<void>; warned: boolean };
 }
 
@@ -92,6 +94,7 @@ export class Controller implements vscode.Disposable {
   readonly filesTree = new FilesTree();
   private filesView?: vscode.TreeView<FileNode>;
   private readonly manifest: any;
+  private readonly noteThreads = new WeakMap<vscode.CommentThread, string>();
   private readonly conversations = new WeakMap<vscode.CommentThread, Conversation>();
   private readonly status: vscode.StatusBarItem;
 
@@ -516,9 +519,10 @@ export class Controller implements vscode.Disposable {
   async regenerate(): Promise<void> {
     const s = this.session;
     if (!s || s.phase === "generating") return;
+    // Progress is kept as it is until the new tour exists, then moved onto it. If the
+    // regeneration fails or is interrupted, the cached tour and its progress are untouched.
+    s.replacing = s.tour ?? s.replacing;
     s.tour = undefined;
-    s.state = { ...emptyState(), notes: s.state.notes };
-    this.saveState();
     await this.focus.clear();
     await this.generate();
   }
@@ -548,11 +552,22 @@ export class Controller implements vscode.Disposable {
       s.tour = tour;
       s.phase = "ready";
       writeJson(path.join(s.storage, `${s.key}.tour.json`), tour);
+      if (s.replacing) s.state = carryProgress(s.replacing.steps, s.state, tour.steps);
+      s.replacing = undefined;
       s.state.current = -1;
       this.saveState();
       this.update();
     } catch (e) {
       if (this.session !== s) return;
+      if (s.replacing) {
+        // A failed regeneration leaves the review as it was.
+        s.tour = s.replacing;
+        s.replacing = undefined;
+        s.phase = "ready";
+        this.update();
+        void vscode.window.showWarningMessage(`Review Guide could not regenerate the tour, so the previous one is kept: ${(e as Error).message}`);
+        return;
+      }
       s.phase = "error";
       s.error = (e as Error).message;
       this.update();
@@ -608,6 +623,46 @@ export class Controller implements vscode.Disposable {
   }
 
   // ---------- navigation ----------
+
+  /** Shows a step's code, with the conversations and review comments saved on that file. */
+  private async showStep(s: Session, step: Step, preserveFocus: boolean): Promise<void> {
+    const target = this.stepTarget(s, step);
+    await this.focus.show(target, preserveFocus);
+    if (target.deleted) return;
+    const uri = vscode.Uri.file(path.join(s.root, step.file));
+    const doc = vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString());
+    if (!doc) return;
+    const row = (line: number) => Math.min(Math.max(0, line - 1), doc.lineCount - 1);
+
+    const inTalks = new Set<string>();
+    for (const asked of s.state.asked) {
+      if (asked.file !== step.file || asked.quote || asked.pending || !asked.answer) continue;
+      for (const f of asked.more ?? []) if (f.kind === "comment") inTalks.add(f.answer);
+      const view = this.focus.showAnswer(uri, row(asked.endLine), "answer", true);
+      const code = doc.getText(new vscode.Range(row(asked.startLine), 0, row(asked.endLine), Number.MAX_SAFE_INTEGER));
+      const talk: Conversation = { asked, code, step: s.tour?.steps.find((x) => x.id === asked.stepId), view, busy: false };
+      this.conversations.set(view.thread, talk);
+      this.renderTalk(talk);
+    }
+    for (const note of s.state.notes) {
+      if (note.file !== step.file) continue;
+      // A comment drafted in a conversation is also inside that conversation's thread.
+      const view = this.focus.showAnswer(uri, row(note.line), "note", false);
+      this.noteThreads.set(view.thread, note.id);
+      view.render([{ who: "comment", text: note.body }]);
+    }
+  }
+
+  /** The trash button on a review comment shown in the code. */
+  threadDeleteNote(thread: vscode.CommentThread): void {
+    const s = this.session;
+    const id = thread && this.noteThreads.get(thread);
+    if (!s || !id) return;
+    s.state.notes = s.state.notes.filter((n) => n.id !== id);
+    thread.dispose();
+    this.saveState();
+    this.update();
+  }
 
   private stepTarget(s: Session, step: Step): ChunkTarget {
     const file = s.files.find((f) => f.path === step.file);
@@ -687,10 +742,10 @@ export class Controller implements vscode.Disposable {
       this.update();
       if (this.layout() === "tab") {
         // One thing on screen at a time: a step shows its code, with the note above it.
-        await this.focus.show(this.stepTarget(s, step), false);
+        await this.showStep(s, step, false);
       } else {
         this.panel.open();
-        await this.focus.show(this.stepTarget(s, step), fromPanel && !this.focus.isolate);
+        await this.showStep(s, step, fromPanel && !this.focus.isolate);
         // Stepping from the panel keeps the keyboard in the panel, so n and p keep working.
         if (fromPanel) this.panel.focus();
       }
@@ -714,7 +769,7 @@ export class Controller implements vscode.Disposable {
   async backToStep(): Promise<void> {
     const s = this.session;
     const step = s?.tour?.steps[s.state.current];
-    if (s && step) await this.focus.show(this.stepTarget(s, step), false);
+    if (s && step) await this.showStep(s, step, false);
   }
 
   async toggleDiff(): Promise<void> {
@@ -732,7 +787,7 @@ export class Controller implements vscode.Disposable {
   private async reshow(): Promise<void> {
     const s = this.session;
     const step = s?.tour?.steps[s.state.current];
-    if (s && step) await this.focus.show(this.stepTarget(s, step), false);
+    if (s && step) await this.showStep(s, step, false);
   }
 
   private currentStep(): Step | undefined {

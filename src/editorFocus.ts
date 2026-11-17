@@ -155,12 +155,14 @@ export class EditorFocus implements vscode.Disposable {
    * Opens a conversation thread under a line. The reply box at its bottom takes follow-up
    * questions; `render` replaces what the thread shows.
    */
-  showAnswer(uri: vscode.Uri, line: number): AnswerThread {
+  showAnswer(uri: vscode.Uri, line: number, kind: "answer" | "note" = "answer", collapsed = false): AnswerThread {
     const thread = this.notes.createCommentThread(uri, new vscode.Range(line, 0, line, 0), []);
-    thread.label = "Question about this code";
-    thread.contextValue = "answer";
-    thread.canReply = true;
-    thread.collapsibleState = vscode.CommentThreadCollapsibleState.Expanded;
+    thread.label = kind === "note" ? "Your review comment, posted when you submit the review" : "Question about this code";
+    thread.contextValue = kind;
+    thread.canReply = kind === "answer";
+    thread.collapsibleState = collapsed
+      ? vscode.CommentThreadCollapsibleState.Collapsed
+      : vscode.CommentThreadCollapsibleState.Expanded;
     this.answerThreads.push(thread);
     const names = { you: "You", guide: "Review Guide", comment: "Review comment, added to your review" };
     return {

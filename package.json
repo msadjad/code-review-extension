@@ -2,7 +2,7 @@
   "name": "review-guide",
   "displayName": "Review Guide",
   "description": "Guided code review: walks a PR in small chunks explained in business terms, with diagrams and multi-agent findings.",
-  "version": "0.6.4",
+  "version": "0.7.0",
   "publisher": "msadjad",
   "private": true,
   "license": "UNLICENSED",
@@ -38,6 +38,7 @@
       { "command": "reviewGuide.showShortcuts", "title": "Show Keyboard Shortcuts", "category": "Review Guide" },
       { "command": "reviewGuide.threadAsk", "title": "Ask", "category": "Review Guide" },
       { "command": "reviewGuide.threadComment", "title": "Add Review Comment", "category": "Review Guide", "icon": "$(comment)" },
+      { "command": "reviewGuide.threadDeleteNote", "title": "Delete Review Comment", "category": "Review Guide", "icon": "$(trash)" },
       { "command": "reviewGuide.submitReview", "title": "Submit Review to GitHub", "category": "Review Guide" },
       { "command": "reviewGuide.stop", "title": "End Review", "category": "Review Guide", "icon": "$(close)" }
     ],
@@ -88,13 +89,15 @@
     "menus": {
       "commandPalette": [
         { "command": "reviewGuide.threadAsk", "when": "false" },
-        { "command": "reviewGuide.threadComment", "when": "false" }
+        { "command": "reviewGuide.threadComment", "when": "false" },
+        { "command": "reviewGuide.threadDeleteNote", "when": "false" }
       ],
       "comments/commentThread/context": [
         { "command": "reviewGuide.threadAsk", "group": "inline@1", "when": "commentController == reviewGuide.notes && commentThread == answer" },
         { "command": "reviewGuide.threadComment", "group": "inline@2", "when": "commentController == reviewGuide.notes && commentThread == answer" }
       ],
       "comments/commentThread/title": [
+        { "command": "reviewGuide.threadDeleteNote", "group": "navigation", "when": "commentController == reviewGuide.notes && commentThread == note" },
         { "command": "reviewGuide.threadComment", "group": "navigation", "when": "commentController == reviewGuide.notes && commentThread == answer" }
       ],
       "view/title": [

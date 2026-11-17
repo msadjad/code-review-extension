@@ -110,3 +110,45 @@ export function buildReviewPayload(
   const parts = [intro.trim(), loose.join("\n")].filter(Boolean);
   return { commit_id: headSha, event, body: parts.join("\n\n"), comments };
 }
+
+interface StepShape {
+  id: string;
+  file: string;
+  startLine: number;
+  endLine: number;
+  hunkIds: string[];
+}
+
+/**
+ * Moves review progress onto a regenerated tour of the same diff. Steps get new ids and
+ * boundaries, but hunks stay the same, so a new step counts as read (or understood) when
+ * every hunk in it was already read (or understood). Notes and questions follow their lines.
+ */
+export function carryProgress(oldSteps: StepShape[], state: ReviewState, newSteps: StepShape[]): ReviewState {
+  const read = new Set(state.visited);
+  const hunksOf = (keep: (s: StepShape) => boolean) => new Set(oldSteps.filter(keep).flatMap((s) => s.hunkIds));
+  const readHunks = hunksOf((s) => read.has(s.id));
+  const understood = hunksOf((s) => state.statuses[s.id] === "understood");
+  const concern = hunksOf((s) => state.statuses[s.id] === "concern");
+  const all = (s: StepShape, set: Set<string>) => s.hunkIds.length > 0 && s.hunkIds.every((h) => set.has(h));
+
+  const statuses: Record<string, StepStatus> = {};
+  for (const s of newSteps) {
+    if (s.hunkIds.some((h) => concern.has(h))) statuses[s.id] = "concern";
+    else if (all(s, understood)) statuses[s.id] = "understood";
+  }
+  const stepAt = (file: string, line: number, fallback: string): string =>
+    (
+      newSteps.find((s) => s.file === file && line >= s.startLine && line <= s.endLine) ??
+      newSteps.find((s) => s.file === file)
+    )?.id ?? fallback;
+  const fixed = new Set(["", "overview", "finish"]);
+  return {
+    current: -1,
+    statuses,
+    visited: newSteps.filter((s) => all(s, readHunks)).map((s) => s.id),
+    notes: state.notes.map((n) => ({ ...n, stepId: stepAt(n.file, n.line, "") })),
+    asked: state.asked.map((a) => (fixed.has(a.stepId) ? a : { ...a, stepId: stepAt(a.file, a.endLine, "finish") })),
+    dismissedFindings: state.dismissedFindings,
+  };
+}
